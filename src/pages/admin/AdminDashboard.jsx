@@ -16,13 +16,42 @@ import {
   Clock,
   ArrowRight,
   Sparkles,
+  CalendarCheck,
+  Gamepad2,
+  Armchair,
+  Mail,
 } from 'lucide-react';
+import { getWebsiteStats, WebsiteNotConfiguredError } from '../../services/websiteAdminService';
 
 export function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Junio 8 website: today's bookings and new enquiries (null = not connected / not loaded)
+  const [webStats, setWebStats] = useState(null);
+  const [webState, setWebState] = useState('loading'); // 'loading' | 'ok' | 'not-configured' | 'error'
+
+  useEffect(() => {
+    let alive = true;
+    const loadWeb = async () => {
+      try {
+        const data = await getWebsiteStats();
+        if (!alive) return;
+        setWebStats(data);
+        setWebState('ok');
+      } catch (err) {
+        if (!alive) return;
+        setWebState(err instanceof WebsiteNotConfiguredError ? 'not-configured' : 'error');
+      }
+    };
+    loadWeb();
+    const t = setInterval(loadWeb, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubOrders = subscribeAllOrders((data) => {
@@ -127,6 +156,30 @@ export function AdminDashboard() {
                 subtext="Per table ticket"
               />
             </div>
+
+            {/* Junio 8 website: bookings & enquiries */}
+            <section>
+              <div className="flex items-baseline justify-between mb-3">
+                <h2 className="text-xl font-display">Website today</h2>
+                <Link to="/admin/bookings" className="text-xs text-brand-600 hover:underline">Open bookings →</Link>
+              </div>
+              {webState === 'ok' && webStats ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                  <Link to="/admin/bookings"><StatCard title="Bookings today" value={webStats.todayTotal} icon={CalendarCheck} color="brand" subtext="Tables + PS5, not cancelled" /></Link>
+                  <Link to="/admin/bookings"><StatCard title="Tables today" value={webStats.todayTables} icon={Armchair} color="blue" subtext="Reserved on the website" /></Link>
+                  <Link to="/admin/bookings"><StatCard title="PS5 today" value={webStats.todayPs5} icon={Gamepad2} color="purple" subtext={`${webStats.pendingUpcoming} pending to confirm`} /></Link>
+                  <Link to="/admin/enquiries"><StatCard title="New enquiries" value={webStats.newEnquiries} icon={Mail} color="amber" subtext="Waiting for a reply" /></Link>
+                </div>
+              ) : (
+                <div className="bg-paper border border-slate-200 p-4 text-sm text-slate-600">
+                  {webState === 'loading' && 'Loading website bookings...'}
+                  {webState === 'not-configured' && (
+                    <>Website not connected yet. <Link to="/admin/bookings" className="text-brand-600 underline">See how to connect it</Link>.</>
+                  )}
+                  {webState === 'error' && 'Could not load website bookings right now.'}
+                </div>
+              )}
+            </section>
 
             {/* Two Column Layout: Recent Orders & Top Selling Items */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

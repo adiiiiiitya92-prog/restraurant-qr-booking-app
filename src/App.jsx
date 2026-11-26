@@ -16,6 +16,9 @@ import { AdminTables } from './pages/admin/AdminTables';
 import { AdminMenu } from './pages/admin/AdminMenu';
 import { AdminOrders } from './pages/admin/AdminOrders';
 import { AdminStaff } from './pages/admin/AdminStaff';
+import { AdminBookings } from './pages/admin/AdminBookings';
+import { AdminEnquiries } from './pages/admin/AdminEnquiries';
+import { AdminWebsiteSettings } from './pages/admin/AdminWebsiteSettings';
 import { LoginPage } from './pages/auth/LoginPage';
 import { StaffHome } from './pages/staff/StaffHome';
 
@@ -87,6 +90,32 @@ export default function App() {
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <AdminOrders />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Junio 8 website data (bookings, enquiries, settings) */}
+              <Route
+                path="/admin/bookings"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminBookings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/enquiries"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminEnquiries />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/website"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminWebsiteSettings />
                   </ProtectedRoute>
                 }
               />

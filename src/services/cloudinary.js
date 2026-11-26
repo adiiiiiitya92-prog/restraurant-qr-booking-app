@@ -1,13 +1,13 @@
 // Cloudinary image uploads for Junio 8 menu photos.
 //
 // The Cloudinary account is shared with another project, so uploads are
-// SIGNED: the browser asks our Netlify function (netlify/functions/cloudinary-sign.mjs)
+// SIGNED: the browser asks our Vercel function (api/cloudinary-sign.js)
 // for a one-time signature. The function checks the user is a Junio 8 admin and
 // forces the junio8/menu folder. The API secret never reaches the browser.
 
 import { auth } from './firebase';
 
-const SIGN_ENDPOINT = '/.netlify/functions/cloudinary-sign';
+const SIGN_ENDPOINT = '/api/cloudinary-sign';
 const MAX_BYTES = 5 * 1024 * 1024;
 
 /**
@@ -39,7 +39,7 @@ export async function uploadMenuImage(file) {
   const sign = await signRes.json().catch(() => null);
   if (!signRes.ok || !sign) {
     if (signRes.status === 404) {
-      throw new Error('Upload server not found. Run the app with "npx netlify dev" (or deploy to Netlify) to upload photos.');
+      throw new Error('Upload server not found (/api/cloudinary-sign). Restart the dev server, or check the Vercel deployment.');
     }
     throw new Error(sign?.error || `Upload not allowed (${signRes.status})`);
   }

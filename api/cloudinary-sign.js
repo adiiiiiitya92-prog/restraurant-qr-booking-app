@@ -7,7 +7,7 @@
 //     project's folders cannot be written to, and nothing is overwritten
 //     because no public_id is signed; Cloudinary picks a random one).
 //
-// Server env vars (Netlify → Site configuration → Environment variables):
+// Server env vars (Vercel → Project → Settings → Environment Variables, and .env for local):
 //   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
 //   VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_API_KEY (already set for the app)
 
@@ -65,8 +65,8 @@ function signParams(params, apiSecret) {
   return crypto.createHash('sha1').update(toSign + apiSecret).digest('hex');
 }
 
-export default async (req) => {
-  if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
+// Vercel Function (Web handler): POST /api/<file name>. Other methods get 405 from Vercel.
+export async function POST(req) {
 
   const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
   const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
@@ -101,4 +101,4 @@ export default async (req) => {
     signature: signParams(params, CLOUDINARY_API_SECRET),
     ...params,
   });
-};
+}

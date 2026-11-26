@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, QrCode, UtensilsCrossed, ListOrdered, ChefHat, Users } from 'lucide-react';
+import { LayoutDashboard, QrCode, UtensilsCrossed, ListOrdered, ChefHat, Users, CalendarCheck, Mail, Globe } from 'lucide-react';
 
 export function AdminHeader({ title, subtitle, action = null }) {
   const navItems = [
@@ -9,6 +9,9 @@ export function AdminHeader({ title, subtitle, action = null }) {
     { to: '/admin/menu', label: 'Menu Items', icon: UtensilsCrossed },
     { to: '/admin/orders', label: 'Order History', icon: ListOrdered },
     { to: '/admin/staff', label: 'Staff', icon: Users },
+    { to: '/admin/bookings', label: 'Website Bookings', icon: CalendarCheck },
+    { to: '/admin/enquiries', label: 'Enquiries', icon: Mail },
+    { to: '/admin/website', label: 'Website Settings', icon: Globe },
     { to: '/kitchen', label: 'Live Kitchen View', icon: ChefHat },
   ];
 

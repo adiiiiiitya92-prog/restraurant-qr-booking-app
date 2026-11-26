@@ -1,6 +1,9 @@
-// Dev-only: serve netlify/functions/*.mjs at /.netlify/functions/<name> from the
-// normal Vite dev server, so staff management and photo upload work with plain
-// `npm run dev` (no `netlify dev` needed). Production uses real Netlify Functions.
+// Dev-only: serve the Vercel functions in api/*.js at /api/<name> from the normal
+// Vite dev server, so staff management and photo upload work with plain
+// `npm run dev`. On Vercel the real Vercel Functions serve these same files.
+//
+// Each api/<name>.js exports Web-standard method handlers, e.g.
+//   export async function POST(request) { return new Response(...) }
 
 import { loadEnv } from 'vite';
 
@@ -11,9 +14,15 @@ import { loadEnv } from 'vite';
 globalThis.__junio8ShellEnvKeys ??= new Set(Object.keys(process.env));
 const SHELL_ENV_KEYS = globalThis.__junio8ShellEnvKeys;
 
-export function netlifyFunctionsDev() {
+function send(res, status, body) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json');
+  res.end(JSON.stringify(body));
+}
+
+export function apiFunctionsDev() {
   return {
-    name: 'junio8-netlify-functions-dev',
+    name: 'junio8-api-functions-dev',
     apply: 'serve',
     configResolved(config) {
       // Give the functions their server-only env vars (CLOUDINARY_*, FIREBASE_*) from .env.
@@ -24,18 +33,19 @@ export function netlifyFunctionsDev() {
       }
     },
     configureServer(server) {
-      server.middlewares.use('/.netlify/functions', async (req, res, next) => {
+      server.middlewares.use('/api', async (req, res, next) => {
         const name = (req.url || '').split('?')[0].replace(/^\/+/, '').split('/')[0];
         if (!/^[a-z0-9-]+$/i.test(name)) return next();
 
         let mod;
         try {
-          mod = await server.ssrLoadModule(`/netlify/functions/${name}.mjs`);
+          mod = await server.ssrLoadModule(`/api/${name}.js`);
         } catch {
-          res.statusCode = 404;
-          res.end(JSON.stringify({ error: `Function "${name}" not found` }));
-          return;
+          return send(res, 404, { error: `API "${name}" not found` });
         }
+
+        const handler = mod[req.method] || (typeof mod.default === 'function' ? mod.default : null);
+        if (!handler) return send(res, 405, { error: 'Method not allowed' });
 
         try {
           const chunks = [];
@@ -48,15 +58,13 @@ export function netlifyFunctionsDev() {
             body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body,
           });
 
-          const response = await mod.default(request);
+          const response = await handler(request);
           res.statusCode = response.status;
           response.headers.forEach((value, key) => res.setHeader(key, value));
           res.end(Buffer.from(await response.arrayBuffer()));
         } catch (err) {
-          console.error(`[functions] ${name} crashed:`, err);
-          res.statusCode = 500;
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'Function crashed. See the dev server terminal.' }));
+          console.error(`[api] ${name} crashed:`, err);
+          send(res, 500, { error: 'Function crashed. See the dev server terminal.' });
         }
       });
     },

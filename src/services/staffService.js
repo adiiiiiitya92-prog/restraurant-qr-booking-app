@@ -1,13 +1,13 @@
 // Staff management (admin only).
 // The list is read live from Firestore (rules allow admins to list staff).
 // Creating logins, editing, password changes and blocking go through the
-// server function netlify/functions/staff-admin.mjs, because they need the
+// Vercel function api/staff-admin.js, because they need the
 // Firebase Admin SDK.
 
 import { collection, onSnapshot } from 'firebase/firestore';
 import { auth, db, isFirebaseConfigured } from './firebase';
 
-const ENDPOINT = '/.netlify/functions/staff-admin';
+const ENDPOINT = '/api/staff-admin';
 
 export function subscribeStaff(callback, onError) {
   if (!isFirebaseConfigured || !db) {
@@ -58,7 +58,7 @@ async function callStaffAdmin(action, payload = {}) {
   const data = await res.json().catch(() => null);
   if (!res.ok) {
     if (res.status === 404 && !data) {
-      throw new Error('Staff server not found. Run the app with "npm run dev:netlify" (or deploy to Netlify).');
+      throw new Error('Staff server not found (/api/staff-admin). Restart the dev server, or check the Vercel deployment.');
     }
     throw new Error(data?.error || `Request failed (${res.status})`);
   }
@@ -69,3 +69,4 @@ export const createStaff = (data) => callStaffAdmin('create', data);
 export const updateStaff = (uid, data) => callStaffAdmin('update', { uid, ...data });
 export const setStaffPassword = (uid, password) => callStaffAdmin('setPassword', { uid, password });
 export const setStaffBlocked = (uid, blocked) => callStaffAdmin('setBlocked', { uid, blocked });
+export const deleteStaff = (uid) => callStaffAdmin('delete', { uid });

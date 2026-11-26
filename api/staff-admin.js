@@ -5,7 +5,7 @@
 // Firebase Admin SDK, which must run on a server. Only an active Junio 8 admin
 // (staff/{uid}.role == 'admin') can call this.
 //
-// Server env vars (Netlify → Site configuration → Environment variables, and .env for local):
+// Server env vars (Vercel → Project → Settings → Environment Variables, and .env for local):
 //   FIREBASE_CLIENT_EMAIL   from the service-account JSON ("client_email")
 //   FIREBASE_PRIVATE_KEY    from the service-account JSON ("private_key"), keep the \n
 //   VITE_FIREBASE_PROJECT_ID (already set for the app)
@@ -32,7 +32,7 @@ function json(status, body) {
   });
 }
 
-// Accepts the key however it was pasted into .env / Netlify: with literal \n,
+// Accepts the key however it was pasted into .env / Vercel: with literal \n,
 // real newlines, Windows \r\n, wrapping quotes, or a trailing "," from the JSON.
 // Rebuilds a clean PEM from the base64 body.
 function normalizePrivateKey(raw) {
@@ -146,8 +146,8 @@ async function countActiveAdmins(db) {
   return snap.docs.filter((d) => d.data().active !== false).length;
 }
 
-export default async (req) => {
-  if (req.method !== 'POST') return json(405, { error: 'Method not allowed' });
+// Vercel Function (Web handler): POST /api/<file name>. Other methods get 405 from Vercel.
+export async function POST(req) {
 
   try {
     const app = adminApp();
@@ -225,10 +225,26 @@ export default async (req) => {
       return json(200, { ok: true });
     }
 
+    if (action === 'delete') {
+      if (uid === myUid) throw new HttpError(400, 'You cannot delete your own account.');
+      if (current.role === 'admin' && current.active !== false && (await countActiveAdmins(db)) <= 1) {
+        throw new HttpError(400, 'At least one active admin is needed.');
+      }
+
+      // Remove the login first, so even if the record delete fails they can't sign in.
+      try {
+        await auth.deleteUser(uid);
+      } catch (err) {
+        if (err?.code !== 'auth/user-not-found') throw err; // already gone: just clean up the record
+      }
+      await ref.delete();
+      return json(200, { ok: true });
+    }
+
     throw new HttpError(400, 'Unknown action.');
   } catch (err) {
     const e = friendlyFirebaseError(err);
     if (e.status >= 500) console.error('staff-admin error:', err);
     return json(e.status, { error: e.message });
   }
-};
+}

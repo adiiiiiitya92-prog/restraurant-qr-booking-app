@@ -3,7 +3,7 @@
 // QR codes are printed once and stuck on tables, so the link must point at the
 // LIVE site, not at whatever address the admin happens to be using (e.g.
 // http://localhost:5173 while testing). Set VITE_PUBLIC_SITE_URL in .env /
-// Netlify to the live address, e.g. https://order.junio8.in
+// Vercel to the live address, e.g. https://junio8.vercel.app
 
 const configured = (import.meta.env.VITE_PUBLIC_SITE_URL || '').trim().replace(/\/+$/, '');
 

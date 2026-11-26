@@ -1,6 +1,6 @@
 # ☕ Junio 8 Café - QR Code Menu & Table Ordering PWA
 
-A modern, serverless, real-time Progressive Web App (PWA) for restaurant table ordering built with **React (Vite) + Tailwind CSS + Firebase Firestore & Auth**, designed for static deployment on **Netlify**.
+A modern, serverless, real-time Progressive Web App (PWA) for restaurant table ordering built with **React (Vite) + Tailwind CSS + Firebase Firestore & Auth**, designed for static deployment on **Vercel**.
 
 ---
 
@@ -43,8 +43,9 @@ A modern, serverless, real-time Progressive Web App (PWA) for restaurant table o
 - **Celebration Effects**: `canvas-confetti`
 - **Backend & Database**: Firebase Firestore (Real-time NoSQL)
 - **Authentication**: Firebase Authentication (Email/Password)
-- **Storage**: Firebase Storage (Menu item images)
-- **Deployment**: Netlify (Pure static SPA build — 100% serverless)
+- **Images**: Cloudinary (signed uploads into the `junio8/menu` folder)
+- **Server functions**: Vercel Functions in `api/` (Cloudinary signing, staff management)
+- **Deployment**: Vercel
 
 ---
 
@@ -137,24 +138,23 @@ The included `firestore.rules` file enforces zero-backend security:
 
 ---
 
-## 🌐 Deploying to Netlify
+## 🌐 Deploying to Vercel
 
-This project is configured as a static Single-Page Application (SPA) with zero server functions needed.
+The app is a Vite SPA plus Vercel Functions in `api/` (shared server code lives in `api/_lib/`, which Vercel does not expose):
+`api/cloudinary-sign.js` (menu photo uploads), `api/staff-admin.js` (create / edit / block / delete staff logins) and `api/website-admin.js` (the Junio 8 website's bookings, enquiries and settings).
+`vercel.json` holds the SPA rewrite and cache headers.
 
-### Method 1: Netlify Git Continuous Deployment (Recommended)
-1. Push your repository to GitHub / GitLab / Bitbucket.
-2. Log in to [Netlify](https://app.netlify.com/) and click **Add new site ➔ Import an existing project**.
-3. Select your repository. Netlify will auto-detect the build settings from `netlify.toml`:
-   - **Build command**: `npm run build`
-   - **Publish directory**: `dist`
-4. Go to **Site settings ➔ Environment variables** and add your `VITE_FIREBASE_*` variables.
-5. Click **Deploy Site**.
+1. Import the GitHub repository in [Vercel](https://vercel.com/new). Framework preset: **Vite** (build `npm run build`, output `dist`).
+2. **Project → Settings → Environment Variables**, add for Production (and Preview if used):
+   - `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`
+   - `VITE_PUBLIC_SITE_URL` = your live address, e.g. `https://your-project.vercel.app` (used inside table QR codes)
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+   - `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (from a Firebase service-account key)
+   - `WEBSITE_FIREBASE_PROJECT_ID`, `WEBSITE_FIREBASE_CLIENT_EMAIL`, `WEBSITE_FIREBASE_PRIVATE_KEY` (the Junio 8 website's own Firebase project; powers Admin → Website Bookings / Enquiries / Website Settings via `api/website-admin.js`)
+3. Redeploy after changing variables (`VITE_*` values are baked in at build time).
+4. Firebase Console → Authentication → Settings → **Authorized domains**: add your Vercel domain.
 
-### Method 2: Manual Netlify CLI Deployment
-```bash
-npm run build
-npx netlify-cli deploy --prod --dir=dist
-```
+Local development: `npm run dev` serves the same `api/` functions at `http://localhost:5173/api/...` using `.env`.
 
 ---
 

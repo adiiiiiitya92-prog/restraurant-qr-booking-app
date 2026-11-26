@@ -32,7 +32,8 @@ dist-ssr
 .firebase/
 .firebaserc
 
-# Local Netlify folder
+# Local Vercel / old Netlify folders
+.vercel
 .netlify
 
 # Firebase service-account keys (never commit)

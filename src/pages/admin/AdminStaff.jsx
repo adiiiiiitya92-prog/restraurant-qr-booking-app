@@ -11,8 +11,9 @@ import {
   updateStaff,
   setStaffPassword,
   setStaffBlocked,
+  deleteStaff,
 } from '../../services/staffService';
-import { UserPlus, Pencil, KeyRound, Ban, CheckCircle2, Eye, EyeOff, Users, Loader2 } from 'lucide-react';
+import { UserPlus, Pencil, KeyRound, Ban, CheckCircle2, Eye, EyeOff, Users, Loader2, Trash2 } from 'lucide-react';
 
 const MIN_PASSWORD = 8;
 
@@ -45,6 +46,34 @@ function PasswordInput({ value, onChange, autoFocus = false }) {
       >
         {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
+      {/* Delete */}
+      <Modal isOpen={modal?.type === 'delete'} onClose={close} title={`Delete ${modal?.member?.name || 'staff'}?`}>
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">
+            This permanently removes the login <b>{modal?.member?.email}</b>. They are signed out everywhere and cannot sign in again.
+            Past orders are not affected. This cannot be undone.
+          </p>
+          <p className="text-xs text-slate-500">
+            Only need to stop them for a while? Use <b>Block</b> instead, which can be undone.
+          </p>
+          <div>
+            <label className={labelClass}>Type DELETE to confirm</label>
+            <input value={confirmText} onChange={(e) => setConfirmText(e.target.value)} autoFocus className={inputClass} placeholder="DELETE" />
+          </div>
+          <div className="flex gap-3">
+            <button onClick={close} disabled={busy} className="flex-1 py-3 border border-slate-300 text-[11px] uppercase tracking-[0.25em] hover:border-slate-950">
+              Cancel
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={busy || confirmText.trim().toUpperCase() !== 'DELETE'}
+              className="flex-1 flex items-center justify-center gap-2 py-3 bg-rose-700 hover:bg-rose-800 text-white text-[11px] uppercase tracking-[0.25em] disabled:opacity-40"
+            >
+              {busy ? busyLabel : <><Trash2 className="w-4 h-4" /><span>Delete</span></>}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -70,6 +99,7 @@ export function AdminStaff() {
   // modal: null | { type: 'create' } | { type: 'edit' | 'password' | 'block', member }
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'kitchen' });
+  const [confirmText, setConfirmText] = useState('');
 
   useEffect(() => {
     const unsub = subscribeStaff(
@@ -98,6 +128,10 @@ export function AdminStaff() {
     setModal({ type: 'password', member });
   };
   const openBlock = (member) => setModal({ type: 'block', member });
+  const openDelete = (member) => {
+    setConfirmText('');
+    setModal({ type: 'delete', member });
+  };
   const close = () => !busy && setModal(null);
 
   const run = async (fn, successMsg) => {
@@ -140,6 +174,11 @@ export function AdminStaff() {
     );
   };
 
+  const handleDelete = () => {
+    const member = modal.member;
+    run(() => deleteStaff(member.uid), `${member.name || member.email} has been deleted`);
+  };
+
   const busyLabel = (
     <>
       <Loader2 className="w-4 h-4 animate-spin" />
@@ -153,7 +192,7 @@ export function AdminStaff() {
 
       <AdminHeader
         title="Staff"
-        subtitle="Create logins for kitchen and waiter staff, edit their details, change passwords or block access."
+        subtitle="Create logins for kitchen and waiter staff, edit their details, change passwords, block or delete access."
         action={
           isFirebaseConfigured && (
             <button
@@ -245,6 +284,15 @@ export function AdminStaff() {
                       >
                         {blocked ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
                         {blocked ? 'Unblock' : 'Block'}
+                      </button>
+                    )}
+                    {!isMe && (
+                      <button
+                        onClick={() => openDelete(m)}
+                        title="Delete this staff login permanently"
+                        className="flex items-center gap-1.5 px-3 py-2 border border-rose-200 text-rose-700 hover:bg-rose-700 hover:text-white hover:border-rose-700 text-xs transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" /> Delete
                       </button>
                     )}
                   </div>

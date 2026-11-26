@@ -184,7 +184,7 @@ Set VITE_PUBLIC_SITE_URL to your live site first. Print anyway (for testing)?`
             <AlertTriangle className="w-5 h-5 shrink-0" />
             <div>
               <b>Don't print these QR codes yet.</b> They point to <code className="font-mono">{getPublicBaseUrl()}</code>, which only works on
-              this computer. Add <code className="font-mono">VITE_PUBLIC_SITE_URL=https://your-live-site</code> to .env (and Netlify), restart, then print.
+              this computer. Add <code className="font-mono">VITE_PUBLIC_SITE_URL=https://your-live-site</code> to .env (and Vercel → Environment Variables, then redeploy), restart, then print.
             </div>
           </div>
         )}
