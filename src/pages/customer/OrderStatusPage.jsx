@@ -60,7 +60,7 @@ export function OrderStatusPage() {
               We could not find an order with reference "{orderId}".
             </p>
             <Link
-              to={`/order/${tableId || 'table_01'}`}
+              to={`/order/${tableId}`}
               className="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-brand-500 text-white font-bold text-xs shadow-md shadow-brand-500/25 transition-all"
             >
               <UtensilsCrossed className="w-4 h-4" />
@@ -145,7 +145,7 @@ export function OrderStatusPage() {
             </button>
 
             <Link
-              to={`/order/${tableId || order.tableId || 'table_01'}`}
+              to={`/order/${tableId || order.tableId}`}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-600 active:scale-95 text-white text-xs font-bold shadow-md shadow-brand-500/25 transition-all"
             >
               <UtensilsCrossed className="w-4 h-4" />

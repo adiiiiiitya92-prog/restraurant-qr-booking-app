@@ -79,22 +79,6 @@ export function AdminDashboard() {
         subtitle="Real-time performance summary, revenue metrics, and active orders"
         action={
           <div className="flex items-center gap-2">
-            <button
-              onClick={async () => {
-                try {
-                  const res = await seedFirestoreDatabase();
-                  showToast(`✨ Successfully seeded ${res.items || 12} menu items and ${res.tables || 6} tables to Firestore!`, 'success');
-                } catch (err) {
-                  console.error(err);
-                  showToast(`Firestore write failed: ${err.message || 'Permission denied. Check Firebase Console Rules.'}`, 'error');
-                }
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand-500/30 bg-brand-50 dark:bg-brand-950/60 hover:bg-brand-100 dark:hover:bg-brand-900/60 text-brand-700 dark:text-brand-300 font-bold text-xs transition-all shadow-xs"
-            >
-              <Sparkles className="w-4 h-4 text-brand-500" />
-              <span>Sync Sample Menu to Firestore</span>
-            </button>
-
             <Link
               to="/kitchen"
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold text-xs shadow-md shadow-amber-500/20 transition-all"

@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../common/Modal';
-import { INITIAL_CATEGORIES } from '../../services/seedData';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage, isFirebaseConfigured } from '../../services/firebase';
+import { DEFAULT_CATEGORIES, MAX_CATEGORY_LENGTH, normalizeCategoryName, findCategory } from '../../utils/categories';
+import { isFirebaseConfigured } from '../../services/firebase';
+import { uploadMenuImage } from '../../services/cloudinary';
 import { Upload, Image as ImageIcon, Sparkles } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
-export function MenuItemModal({ isOpen, onClose, item, onSave }) {
+const NEW_CATEGORY = '__new__';
+
+export function MenuItemModal({ isOpen, onClose, item, onSave, categories = DEFAULT_CATEGORIES }) {
   const { showToast } = useToast();
+  const defaultCategory = categories[0] || 'Main Course';
+  // When the admin picks "+ New category", they type the name here.
+  const [newCategory, setNewCategory] = useState('');
   const [formData, setFormData] = useState({
     name: '',
-    category: 'Main Course',
+    category: defaultCategory,
     price: '',
     description: '',
     prepTime: '15 mins',
@@ -26,7 +31,7 @@ export function MenuItemModal({ isOpen, onClose, item, onSave }) {
     if (item) {
       setFormData({
         name: item.name || '',
-        category: item.category || 'Main Course',
+        category: normalizeCategoryName(item.category) || defaultCategory,
         price: item.price || '',
         description: item.description || '',
         prepTime: item.prepTime || '15 mins',
@@ -38,7 +43,7 @@ export function MenuItemModal({ isOpen, onClose, item, onSave }) {
     } else {
       setFormData({
         name: '',
-        category: 'Main Course',
+        category: defaultCategory,
         price: '',
         description: '',
         prepTime: '15 mins',
@@ -48,35 +53,36 @@ export function MenuItemModal({ isOpen, onClose, item, onSave }) {
         imageUrl: '',
       });
     }
+    setNewCategory('');
   }, [item, isOpen]);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
+    e.target.value = ''; // allow picking the same file again
     if (!file) return;
 
-    if (isFirebaseConfigured && storage) {
+    if (isFirebaseConfigured) {
       setUploading(true);
       try {
-        const fileRef = ref(storage, `menu-items/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(fileRef, file);
-        const downloadUrl = await getDownloadURL(snapshot.ref);
-        setFormData((prev) => ({ ...prev, imageUrl: downloadUrl }));
-        showToast('Image uploaded successfully to Firebase Storage!', 'success');
+        const url = await uploadMenuImage(file);
+        setFormData((prev) => ({ ...prev, imageUrl: url }));
+        showToast('Photo uploaded', 'success');
       } catch (err) {
         console.error(err);
-        showToast('Could not upload image. Please use an image URL.', 'error');
+        showToast(err.message || 'Could not upload the photo. You can paste an image URL instead.', 'error');
       } finally {
         setUploading(false);
       }
-    } else {
-      // Local preview reader
-      const reader = new FileReader();
-      reader.onload = () => {
-        setFormData((prev) => ({ ...prev, imageUrl: reader.result }));
-        showToast('Image loaded for preview', 'info');
-      };
-      reader.readAsDataURL(file);
+      return;
     }
+
+    // Local demo mode: preview only
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData((prev) => ({ ...prev, imageUrl: reader.result }));
+      showToast('Image loaded for preview', 'info');
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -86,10 +92,22 @@ export function MenuItemModal({ isOpen, onClose, item, onSave }) {
       return;
     }
 
+    let category = formData.category;
+    if (category === NEW_CATEGORY) {
+      category = normalizeCategoryName(newCategory);
+      if (!category) {
+        showToast('Please type a name for the new category', 'warning');
+        return;
+      }
+      // "beverages" typed again should join the existing "Beverages", not make a twin.
+      category = findCategory(categoryOptions, category) || category;
+    }
+
     setSaving(true);
     try {
       await onSave({
         ...formData,
+        category,
         price: Number(formData.price),
         spicyLevel: Number(formData.spicyLevel),
       });
@@ -102,7 +120,11 @@ export function MenuItemModal({ isOpen, onClose, item, onSave }) {
     }
   };
 
-  const availableCategories = INITIAL_CATEGORIES.filter((c) => c !== 'All');
+  // Existing categories, plus this item's own one if it isn't in the list yet.
+  const categoryOptions =
+    formData.category && formData.category !== NEW_CATEGORY && !findCategory(categories, formData.category)
+      ? [...categories, formData.category]
+      : categories;
 
   return (
     <Modal
@@ -137,12 +159,24 @@ export function MenuItemModal({ isOpen, onClose, item, onSave }) {
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none"
             >
-              {availableCategories.map((c) => (
+              {categoryOptions.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
+              <option value={NEW_CATEGORY}>+ New category…</option>
             </select>
+            {formData.category === NEW_CATEGORY && (
+              <input
+                type="text"
+                autoFocus
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                maxLength={MAX_CATEGORY_LENGTH}
+                placeholder="e.g. Cold Coffee, Maggi, Shakes"
+                className="mt-2 w-full px-3.5 py-2 border border-amber-600 bg-white text-slate-900 text-xs focus:outline-none"
+              />
+            )}
           </div>
         </div>
 
@@ -225,7 +259,7 @@ export function MenuItemModal({ isOpen, onClose, item, onSave }) {
               <span>{uploading ? 'Uploading...' : 'Upload'}</span>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageUpload}
                 disabled={uploading}
                 className="hidden"

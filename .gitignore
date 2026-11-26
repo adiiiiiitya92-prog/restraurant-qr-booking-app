@@ -31,3 +31,10 @@ dist-ssr
 # Firebase cache
 .firebase/
 .firebaserc
+
+# Local Netlify folder
+.netlify
+
+# Firebase service-account keys (never commit)
+*firebase-adminsdk*.json
+serviceAccount*.json

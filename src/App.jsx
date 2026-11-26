@@ -15,7 +15,9 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminTables } from './pages/admin/AdminTables';
 import { AdminMenu } from './pages/admin/AdminMenu';
 import { AdminOrders } from './pages/admin/AdminOrders';
+import { AdminStaff } from './pages/admin/AdminStaff';
 import { LoginPage } from './pages/auth/LoginPage';
+import { StaffHome } from './pages/staff/StaffHome';
 
 export default function App() {
   return (
@@ -34,6 +36,8 @@ export default function App() {
 
               {/* Staff Authentication */}
               <Route path="/login" element={<LoginPage />} />
+              {/* Installed-app start page: routes staff to admin or kitchen */}
+              <Route path="/staff" element={<StaffHome />} />
 
               {/* Kitchen Live Display (Kitchen & Admin roles) */}
               <Route
@@ -67,6 +71,14 @@ export default function App() {
                 element={
                   <ProtectedRoute requiredRole="admin">
                     <AdminMenu />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/staff"
+                element={
+                  <ProtectedRoute requiredRole="admin">
+                    <AdminStaff />
                   </ProtectedRoute>
                 }
               />

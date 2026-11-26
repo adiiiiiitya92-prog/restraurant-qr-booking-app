@@ -7,7 +7,7 @@ import { FloatingCartBar } from '../../components/customer/FloatingCartBar';
 import { CallWaiterModal } from '../../components/customer/CallWaiterModal';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { subscribeMenuItems, getTableById } from '../../services/firestoreService';
-import { INITIAL_CATEGORIES } from '../../services/seedData';
+import { buildCategoryList, normalizeCategoryName } from '../../utils/categories';
 import { useCart } from '../../context/CartContext';
 import { Search, Bell, AlertCircle, Sparkles, QrCode } from 'lucide-react';
 
@@ -41,7 +41,7 @@ export function MenuPage() {
         if (!isMounted) return;
 
         if (!found) {
-          setTableError(`Table "${tableId}" not found. Please scan the QR code at your table again.`);
+          setTableError('This QR code is not valid any more. Please ask the staff for help.');
         } else if (found.isActive === false) {
           setTableError(`Table #${found.tableNumber} is currently marked inactive by restaurant staff.`);
         } else {
@@ -79,6 +79,14 @@ export function MenuPage() {
     };
   }, []);
 
+  // Only categories that actually have dishes, so guests never see empty tabs.
+  const categories = useMemo(() => ['All', ...buildCategoryList(menuItems)], [menuItems]);
+
+  // If the selected category disappears (its last dish was removed), go back to All.
+  useEffect(() => {
+    if (!categories.includes(selectedCategory)) setSelectedCategory('All');
+  }, [categories, selectedCategory]);
+
   // Filtered menu items memoized to prevent re-filtering on unrelated state changes
   const filteredItems = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -86,7 +94,7 @@ export function MenuPage() {
 
     return menuItems.filter((item) => {
       const matchesCategory =
-        selectedCategory === 'All' || (item.category && item.category.toLowerCase() === cat);
+        selectedCategory === 'All' || normalizeCategoryName(item.category).toLowerCase() === cat;
       const matchesVeg = !vegOnly || item.isVeg === true;
       const matchesSearch =
         !q ||
@@ -140,26 +148,26 @@ export function MenuPage() {
       <Navbar tableId={table?.id} tableNumber={table?.tableNumber} />
 
       {/* Hero / Table Welcome Banner */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-brand-950 text-white py-6 sm:py-8 px-4 sm:px-6 lg:px-8 shadow-inner">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="bg-slate-300 text-slate-950 py-7 sm:py-10 px-4 sm:px-6 lg:px-8 border-b border-slate-950/10">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-end md:justify-between gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 border border-brand-500/40 text-brand-300 text-xs font-bold mb-2">
-              <QrCode className="w-3.5 h-3.5 text-brand-400" />
-              <span>Ordering at Table #{table?.tableNumber || 1}</span>
+            <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.35em] text-amber-800 mb-3">
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Table {String(table?.tableNumber || 1).padStart(2, '0')}</span>
             </div>
-            <h1 className="text-xl sm:text-3xl font-extrabold font-display tracking-tight leading-tight">
-              Delicious Food, Delivered to Your Table
+            <h1 className="text-3xl sm:text-5xl font-display leading-[1.05]">
+              Sip, snack &amp; <em className="italic text-amber-800">stay a while.</em>
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl">
-              Browse our menu, customize spice levels and cooking notes, and place your order directly.
+            <p className="text-sm sm:text-base text-slate-600 mt-3 max-w-xl font-light">
+              Browse the menu, add notes for the kitchen and order right from your table.
             </p>
           </div>
 
           <button
             onClick={() => setIsWaiterModalOpen(true)}
-            className="self-start md:self-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 border border-white/20 text-white text-xs font-bold backdrop-blur-md transition-all shadow-md"
+            className="self-start md:self-auto flex items-center gap-2 px-5 py-3 bg-slate-950 hover:bg-brand-600 active:scale-95 text-slate-50 text-[11px] uppercase tracking-[0.25em] transition-colors"
           >
-            <Bell className="w-4 h-4 text-amber-400" />
+            <Bell className="w-4 h-4" />
             <span>Call Waiter</span>
           </button>
         </div>
@@ -189,7 +197,7 @@ export function MenuPage() {
 
       {/* Category Pills & Veg Filter */}
       <CategoryBar
-        categories={INITIAL_CATEGORIES}
+        categories={categories}
         selectedCategory={selectedCategory}
         onSelectCategory={setSelectedCategory}
         vegFilter={vegOnly}

@@ -5,12 +5,15 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Jost', system-ui, -apple-system, sans-serif;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Outfit', 'Inter', sans-serif;
-  }
+}
+
+/* Cormorant Garamond reads best at medium weights; the bold/extrabold
+   classes used across the app would otherwise look heavy and smudged. */
+.font-display {
+  font-weight: 600 !important;
+  letter-spacing: -0.005em;
 }
 
 /* Custom scrollbar for modern sleek look */
@@ -24,12 +27,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #cbc8b8;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #a39d92;
 }
 
 /* Hide scrollbar for horizontal categories tabs */

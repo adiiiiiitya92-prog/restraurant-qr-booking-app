@@ -1,10 +1,11 @@
 import React from 'react';
 import { formatDateTime } from '../../utils/formatters';
+import { BRAND } from '../../config/brand';
 
 export function KOTPrintSlip({ order }) {
   if (!order) return null;
 
-  const restaurantName = import.meta.env.VITE_RESTAURANT_NAME || 'Gourmet Bistro';
+  const restaurantName = BRAND.name;
 
   return (
     <div id="kot-print-area" className="hidden print:block text-black bg-white">

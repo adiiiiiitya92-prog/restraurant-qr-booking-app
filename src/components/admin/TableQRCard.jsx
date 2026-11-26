@@ -1,14 +1,18 @@
 import React, { useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Download, ExternalLink, Copy, Check, Trash2, Power } from 'lucide-react';
+import { Download, ExternalLink, Copy, Check, Trash2, Power, RefreshCw, AlertTriangle } from 'lucide-react';
+import { getTableOrderUrl, isGuessableTableId } from '../../utils/tableLinks';
+import { BRAND } from '../../config/brand';
 import { useToast } from '../../context/ToastContext';
 
-export function TableQRCard({ table, onToggleActive, onDelete }) {
+export function TableQRCard({ table, onToggleActive, onDelete, onRegenerate }) {
   const { showToast } = useToast();
   const [copied, setCopied] = React.useState(false);
   const qrRef = useRef(null);
 
-  const orderUrl = `${window.location.origin}/order/${table.id}`;
+  const orderUrl = getTableOrderUrl(table.id);
+  const guessable = isGuessableTableId(table.id);
+  const label = `Table ${String(table.tableNumber).padStart(2, '0')}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(orderUrl);
@@ -17,19 +21,39 @@ export function TableQRCard({ table, onToggleActive, onDelete }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Saves the QR WITH the table number printed under it, so printed stickers
+  // can't get mixed up between tables.
   const handleDownloadQR = () => {
     try {
-      const canvas = qrRef.current?.querySelector('canvas');
-      if (!canvas) return;
+      const qrCanvas = qrRef.current?.querySelector('canvas');
+      if (!qrCanvas) return;
 
-      const pngUrl = canvas.toDataURL('image/png');
+      const pad = 40;
+      const size = 600;
+      const out = document.createElement('canvas');
+      out.width = size + pad * 2;
+      out.height = size + pad * 2 + 170;
+      const ctx = out.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, out.width, out.height);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(qrCanvas, pad, pad, size, size);
+
+      ctx.fillStyle = '#141414';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 72px Georgia, serif';
+      ctx.fillText(label.toUpperCase(), out.width / 2, size + pad + 90);
+      ctx.fillStyle = '#93571d';
+      ctx.font = '28px Arial, sans-serif';
+      ctx.fillText(`${BRAND.name} · Scan to order`, out.width / 2, size + pad + 140);
+
       const downloadLink = document.createElement('a');
-      downloadLink.href = pngUrl;
-      downloadLink.download = `Table-${table.tableNumber}-QR.png`;
+      downloadLink.href = out.toDataURL('image/png');
+      downloadLink.download = `Junio8-${label.replace(' ', '-')}-QR.png`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);
-      showToast(`Downloaded QR Code for Table #${table.tableNumber}`, 'success');
+      showToast(`Downloaded QR for ${label}`, 'success');
     } catch (err) {
       console.error(err);
       showToast('Could not download QR code', 'error');
@@ -77,15 +101,26 @@ export function TableQRCard({ table, onToggleActive, onDelete }) {
           <div className="p-2 bg-white rounded-lg shadow-xs">
             <QRCodeCanvas
               value={orderUrl}
-              size={140}
+              size={600}
               level="H"
               includeMargin={true}
+              style={{ width: 140, height: 140 }}
             />
           </div>
-          <p className="text-[11px] font-mono text-slate-500 dark:text-slate-400 mt-2 truncate max-w-[180px]">
-            /order/{table.id}
+          <p className="text-sm font-display mt-2">{label}</p>
+          <p className="text-[10px] font-mono text-slate-500 truncate max-w-[200px]" title={orderUrl}>
+            {orderUrl}
           </p>
         </div>
+
+        {guessable && (
+          <div className="mb-3 p-2.5 bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex gap-2">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>
+              This is an old sample QR anyone could guess. Click <b>New QR</b> before printing.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}
@@ -110,7 +145,7 @@ export function TableQRCard({ table, onToggleActive, onDelete }) {
 
         <div className="flex items-center justify-between pt-1">
           <a
-            href={`/order/${table.id}`}
+            href={orderUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-600 dark:text-brand-400 hover:underline"
@@ -118,6 +153,19 @@ export function TableQRCard({ table, onToggleActive, onDelete }) {
             <span>Open Menu Preview</span>
             <ExternalLink className="w-3 h-3" />
           </a>
+
+          {onRegenerate && (
+            <button
+              onClick={() => onRegenerate(table)}
+              title="Give this table a new QR link (old printed QR stops working)"
+              className={`inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold transition-colors ${
+                guessable ? 'bg-amber-600 text-white hover:bg-amber-700' : 'text-slate-500 hover:text-slate-950'
+              }`}
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>New QR</span>
+            </button>
+          )}
 
           <button
             onClick={() => onDelete(table.id)}

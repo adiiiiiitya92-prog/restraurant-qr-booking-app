@@ -96,27 +96,24 @@ function getTimestampMs(val) {
 // 1. TABLES SERVICE
 // ==========================================
 
-export function subscribeTables(callback) {
+export function subscribeTables(callback, onError) {
   if (isFirebaseConfigured && db) {
     try {
       const q = query(collection(db, 'tables'));
       const unsub = onSnapshot(
         q,
         (snapshot) => {
-          if (!snapshot.empty) {
-            const tables = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-            const sorted = tables.sort(
-              (a, b) => (Number(a.tableNumber) || 0) - (Number(b.tableNumber) || 0)
-            );
-            setLocalData(LOCAL_STORAGE_KEYS.TABLES, sorted, false);
-            callback(sorted);
-          } else {
-            callback(getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES));
-          }
+          // Live mode: show exactly what is in Firestore. Never fall back to sample
+          // tables, or the admin would print QR codes for tables that don't exist.
+          const tables = snapshot.docs
+            .map((d) => ({ ...d.data(), id: d.id }))
+            .sort((a, b) => (Number(a.tableNumber) || 0) - (Number(b.tableNumber) || 0));
+          callback(tables);
         },
         (error) => {
-          console.warn('Firestore tables subscription fallback:', error.message);
-          callback(getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES));
+          console.warn('Firestore tables subscription error:', error.message);
+          callback([]);
+          onError?.(error);
         }
       );
       return () => {
@@ -126,10 +123,12 @@ export function subscribeTables(callback) {
       };
     } catch (err) {
       console.warn('Failed to subscribe tables:', err);
+      callback([]);
+      return () => {};
     }
   }
 
-  // Local fallback
+  // Local demo mode
   const emit = () => callback(getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES));
   emit();
   const listener = () => emit();
@@ -142,25 +141,48 @@ export function subscribeTables(callback) {
 }
 
 export async function getTableById(tableId) {
+  if (!tableId) return null;
   if (isFirebaseConfigured && db) {
-    try {
-      const docRef = doc(db, 'tables', tableId);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        return { id: snap.id, ...snap.data() };
-      }
-    } catch (err) {
-      console.warn('Error fetching table from Firestore:', err);
-    }
+    // Live mode: only real Firestore tables count. Errors are thrown so the
+    // customer sees "try again" rather than a silently wrong table.
+    const snap = await getDoc(doc(db, 'tables', tableId));
+    return snap.exists() ? { ...snap.data(), id: snap.id } : null;
   }
   const local = getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES);
   return local.find((t) => t.id === tableId) || null;
 }
 
+/**
+ * New table ids are "t05-k3x9p2m7qa": the number for humans plus a random part,
+ * so nobody can guess another table's QR link and order "from" that table.
+ */
+export function generateTableId(tableNumber) {
+  const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  const rand = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+  return `t${String(Number(tableNumber) || 0).padStart(2, '0')}-${rand}`;
+}
+
+async function tableNumberTaken(num, exceptId = null) {
+  if (isFirebaseConfigured && db) {
+    const snap = await getDocs(query(collection(db, 'tables'), where('tableNumber', '==', num)));
+    return snap.docs.some((d) => d.id !== exceptId);
+  }
+  const local = getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES);
+  return local.some((t) => Number(t.tableNumber) === num && t.id !== exceptId);
+}
+
 export async function addTable(tableData) {
-  const num = Number(tableData.tableNumber) || 1;
-  const customId = tableData.id || `table_${String(num).padStart(2, '0')}`;
-  
+  const num = Number(tableData.tableNumber);
+  if (!Number.isInteger(num) || num < 1 || num > 999) {
+    throw new Error('Table number must be a whole number between 1 and 999.');
+  }
+  if (await tableNumberTaken(num)) {
+    throw new Error(`Table ${num} already exists.`);
+  }
+  const customId = generateTableId(num);
+
   const payload = sanitizeForFirestore({
     id: customId,
     tableNumber: num,
@@ -170,25 +192,47 @@ export async function addTable(tableData) {
     createdAt: new Date().toISOString(),
   });
 
-  // 1. Update local store
-  const current = getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES);
-  setLocalData(LOCAL_STORAGE_KEYS.TABLES, [...current.filter((t) => t.id !== customId), payload], true);
-
-  // 2. Write directly to Firestore
   if (isFirebaseConfigured && db) {
-    try {
-      const docRef = doc(db, 'tables', customId);
-      await setDoc(docRef, {
-        ...payload,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    } catch (e) {
-      console.error('❌ Firestore addTable error:', e);
-      throw e;
-    }
+    await setDoc(doc(db, 'tables', customId), {
+      ...payload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return customId;
   }
+
+  const current = getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES);
+  setLocalData(LOCAL_STORAGE_KEYS.TABLES, [...current, payload], true);
   return customId;
+}
+
+/**
+ * Gives a table a brand-new QR link (new random id) and retires the old one.
+ * Use when a QR was printed with a guessable id, or a printed QR leaked.
+ * Old orders keep their table number, so history still shows the right table.
+ */
+export async function regenerateTableQr(table) {
+  const newId = generateTableId(table.tableNumber);
+  const { id: _oldId, createdAt: _c, updatedAt: _u, ...rest } = table;
+  const payload = sanitizeForFirestore({ ...rest, id: newId });
+
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, 'tables', newId), {
+      ...payload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    await deleteDoc(doc(db, 'tables', table.id));
+    return newId;
+  }
+
+  const current = getLocalData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES);
+  setLocalData(
+    LOCAL_STORAGE_KEYS.TABLES,
+    [...current.filter((t) => t.id !== table.id), { ...payload, createdAt: new Date().toISOString() }],
+    true
+  );
+  return newId;
 }
 
 export async function updateTable(tableId, updates) {
@@ -354,9 +398,29 @@ export async function deleteMenuItem(itemId) {
 // 3. ORDERS SERVICE
 // ==========================================
 
+/**
+ * Looks up the table a guest is ordering from. The table NUMBER always comes
+ * from the database record for that QR link, never from the browser, so an
+ * order can't end up labelled with the wrong table.
+ */
+async function requireOrderableTable(tableId) {
+  if (!tableId) {
+    throw new Error('Table not recognised. Please scan the QR code on your table again.');
+  }
+  const table = await getTableById(tableId);
+  if (!table) {
+    throw new Error('This QR code is no longer valid. Please ask the staff for help.');
+  }
+  if (table.isActive === false) {
+    throw new Error(`Table ${table.tableNumber} is not taking orders right now. Please ask the staff.`);
+  }
+  return table;
+}
+
 export async function createOrder(orderData) {
+  const table = await requireOrderableTable(orderData.tableId);
   const orderId = orderData.id || `ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-  const tableNum = Number(orderData.tableNumber) || 1;
+  const tableNum = Number(table.tableNumber);
   const shortCode = orderId.slice(-4).toUpperCase();
   const orderNumber = orderData.orderNumber || `#T${tableNum}-${shortCode}`;
 
@@ -372,7 +436,7 @@ export async function createOrder(orderData) {
   const payload = sanitizeForFirestore({
     id: orderId,
     orderNumber,
-    tableId: orderData.tableId || 'table_01',
+    tableId: table.id,
     tableNumber: tableNum,
     items: cleanItems,
     subtotal: Number(orderData.subtotal) || 0,
@@ -613,12 +677,13 @@ export async function updateOrderStatus(orderId, status) {
 // 4. WAITER CALLS SERVICE
 // ==========================================
 
-export async function createWaiterCall(tableId, tableNumber, reason = 'Assistance Needed') {
-  const callId = `call_${Date.now()}`;
+export async function createWaiterCall(tableId, _tableNumber, reason = 'Assistance Needed') {
+  const table = await requireOrderableTable(tableId);
+  const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   const payload = sanitizeForFirestore({
     id: callId,
-    tableId: tableId || 'table_01',
-    tableNumber: Number(tableNumber) || 1,
+    tableId: table.id,
+    tableNumber: Number(table.tableNumber),
     reason: reason || 'Assistance Needed',
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -724,13 +789,18 @@ export async function seedFirestoreDatabase() {
   let seededTables = 0;
 
   try {
-    // 1. Seed tables
+    // 1. Seed tables (random, unguessable ids; skip numbers that already exist)
+    const existing = await getDocs(collection(db, 'tables'));
+    const takenNumbers = new Set(existing.docs.map((d) => Number(d.data().tableNumber)));
     for (const table of INITIAL_TABLES) {
-      const docRef = doc(db, 'tables', table.id);
+      if (takenNumbers.has(Number(table.tableNumber))) continue;
+      const id = generateTableId(table.tableNumber);
+      const docRef = doc(db, 'tables', id);
       await setDoc(
         docRef,
         sanitizeForFirestore({
           ...table,
+          id,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         }),
