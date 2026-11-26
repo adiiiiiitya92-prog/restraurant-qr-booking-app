@@ -33,6 +33,65 @@ export function apiFunctionsDev() {
       }
     },
     configureServer(server) {
+      // Dev cleanup for PWA service workers & stale production assets on localhost:
+      // When a user previously ran a production build or preview on localhost:5173, the browser
+      // or Workbox may have cached an old index.html requesting /assets/index-*.js or polling /sw.js.
+      // Vite's default dev fallback serves index.html (text/html) for missing files, which causes:
+      // "Failed to load module script: Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of 'text/html'".
+      server.middlewares.use((req, res, next) => {
+        const url = (req.url || '').split('?')[0];
+
+        // Self-destruct any stale production Service Worker active on localhost
+        if (url === '/sw.js' || url === '/workbox-window.prod.es5.js' || /^(\/workbox-[a-f0-9]+\.js)$/i.test(url)) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/javascript');
+          res.end(`// Dev mode self-destruct service worker
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    self.registration.unregister().then(() => self.clients.matchAll()).then((clients) => {
+      clients.forEach((c) => c.navigate(c.url));
+    })
+  );
+});
+`);
+          return;
+        }
+
+        // Stale production bundle requests in dev mode
+        if (url.startsWith('/assets/')) {
+          if (url.endsWith('.js')) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/javascript');
+            res.end(`// Dev mode: detected stale production bundle request. Unregistering SW, clearing cache, and refreshing.
+if (typeof window !== 'undefined') {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const r of regs) r.unregister();
+    });
+  }
+  if ('caches' in window) {
+    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).then(() => {
+      window.location.reload();
+    });
+  } else {
+    window.location.reload();
+  }
+}
+`);
+            return;
+          }
+          if (url.endsWith('.css')) {
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'text/css');
+            res.end('/* Dev mode fallback */');
+            return;
+          }
+        }
+
+        next();
+      });
+
       server.middlewares.use('/api', async (req, res, next) => {
         const name = (req.url || '').split('?')[0].replace(/^\/+/, '').split('/')[0];
         if (!/^[a-z0-9-]+$/i.test(name)) return next();

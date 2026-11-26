@@ -4,6 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { apiFunctionsDev } from './vite-plugin-api-dev.js';
 
 export default defineConfig({
+  base: '/',
   // Fixed port so the dev URL never silently moves to 5174.
   server: { port: 5173, strictPort: true },
   // Fresh pre-bundle cache: the old node_modules/.vite still held Firebase 11.10.0
