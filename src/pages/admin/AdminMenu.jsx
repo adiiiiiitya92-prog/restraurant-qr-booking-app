@@ -10,8 +10,9 @@ import {
   updateMenuItem,
   deleteMenuItem,
 } from '../../services/firestoreService';
-import { INITIAL_CATEGORIES } from '../../services/seedData';
+import { buildCategoryList, normalizeCategoryName } from '../../utils/categories';
 import { formatCurrency } from '../../utils/formatters';
+import { optimizedImageUrl } from '../../services/cloudinary';
 import { useToast } from '../../context/ToastContext';
 import {
   Plus,
@@ -95,9 +96,13 @@ export function AdminMenu() {
     }
   };
 
+  // Categories come from the items (plus suggested defaults for the admin).
+  const categories = buildCategoryList(menuItems, { includeDefaults: true });
+  const usedCategories = buildCategoryList(menuItems);
+
   const filteredItems = menuItems.filter((item) => {
     const matchesCategory =
-      selectedCategory === 'All' || item.category?.toLowerCase() === selectedCategory.toLowerCase();
+      selectedCategory === 'All' || normalizeCategoryName(item.category).toLowerCase() === selectedCategory.toLowerCase();
     const matchesVeg = !vegOnly || item.isVeg === true;
     const matchesSearch =
       !searchQuery.trim() ||
@@ -143,7 +148,7 @@ export function AdminMenu() {
 
           {/* Category Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
-            {INITIAL_CATEGORIES.map((cat) => (
+            {['All', ...usedCategories].map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
@@ -206,7 +211,7 @@ export function AdminMenu() {
                   <div className="relative aspect-[16/10] w-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <img
                       src={
-                        item.imageUrl ||
+                        optimizedImageUrl(item.imageUrl, 600) ||
                         'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'
                       }
                       alt={item.name}
@@ -296,6 +301,7 @@ export function AdminMenu() {
         onClose={() => setIsModalOpen(false)}
         item={editingItem}
         onSave={handleSaveItem}
+        categories={categories}
       />
     </div>
   );

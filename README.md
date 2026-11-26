@@ -1,4 +1,4 @@
-# 🍽️ GourmetQR - Serverless QR Code Restaurant Menu & Table Ordering PWA
+# ☕ Junio 8 Café - QR Code Menu & Table Ordering PWA
 
 A modern, serverless, real-time Progressive Web App (PWA) for restaurant table ordering built with **React (Vite) + Tailwind CSS + Firebase Firestore & Auth**, designed for static deployment on **Netlify**.
 
@@ -71,7 +71,6 @@ VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 VITE_FIREBASE_APP_ID=your_app_id
 
 # Optional Branding
-VITE_RESTAURANT_NAME="Gourmet Bistro & Bar"
 VITE_RESTAURANT_CURRENCY="₹"
 VITE_RESTAURANT_TAX_PERCENT=5
 ```
@@ -90,7 +89,7 @@ Open `http://localhost:5173` in your browser.
 
 ### 1. Create a Firebase Project
 1. Go to [Firebase Console](https://console.firebase.google.com/) and click **Add Project**.
-2. Name your project (e.g. `gourmet-restaurant-qr`).
+2. Name your project (e.g. `junio8-cafe`).
 3. Click **Add App** ➔ Select **Web (`</>`)** ➔ Register your app.
 4. Copy the `firebaseConfig` keys into your `.env` file.
 
@@ -98,9 +97,9 @@ Open `http://localhost:5173` in your browser.
 1. In Firebase Console, navigate to **Build ➔ Authentication** ➔ **Get Started**.
 2. In the **Sign-in method** tab, enable **Email/Password**.
 3. Pre-configured staff accounts (auto-provisioned or created manually):
-   - **Admin Account**: `admin@smartdine.com` | `Password@123`
-   - **Kitchen Account**: `kitchen@smartdine.com` | `Password@123`
-   - **Waiter Account**: `waiter@smartdine.com` | `Password@123`
+   - **Admin Account**: `admin@junio8.com` | `Password@123`
+   - **Kitchen Account**: `kitchen@junio8.com` | `Password@123`
+   - **Waiter Account**: `waiter@junio8.com` | `Password@123`
 
 ### 3. Enable Cloud Firestore
 1. Navigate to **Build ➔ Firestore Database** ➔ **Create Database**.

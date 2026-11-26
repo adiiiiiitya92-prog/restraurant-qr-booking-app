@@ -6,33 +6,69 @@ export default {
   ],
   darkMode: 'class',
   theme: {
+    // Junio 8 Café look (matches junio8 website): sharp, editorial corners.
+    borderRadius: {
+      none: '0',
+      sm: '2px',
+      DEFAULT: '3px',
+      md: '3px',
+      lg: '4px',
+      xl: '4px',
+      '2xl': '6px',
+      '3xl': '8px',
+      full: '9999px',
+    },
     extend: {
       colors: {
+        // Fox orange (website --fox #e2611f / --fox-strong #b5441a).
+        // 500 is darkened so white text on it passes WCAG AA.
         brand: {
-          50: '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316', // Vibrant Orange
-          600: '#ea580c',
-          700: '#c2410c',
-          800: '#9a3412',
-          900: '#7c2d12',
-          950: '#431407',
+          50: '#fdf4ec',
+          100: '#fbe5d3',
+          200: '#f5c6a2',
+          300: '#ee9f6c',
+          400: '#e2611f',
+          500: '#c84f1b',
+          600: '#b5441a',
+          700: '#8f3514',
+          800: '#6e3d12',
+          900: '#55300f',
+          950: '#2e1907',
         },
-        surface: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-          800: '#1e293b',
-          900: '#0f172a',
-          950: '#020617',
-        }
+        // Warm neutrals: cream #f4efe8, stone #cbc8b8, ink-soft #4a4540, ink #141414.
+        // Overrides Tailwind's cool slate so every existing slate-* class picks up the café palette.
+        slate: {
+          50: '#f4efe8',
+          100: '#ece6dc',
+          200: '#ddd6ca',
+          300: '#cbc8b8',
+          400: '#a39d92',
+          500: '#7a736b',
+          600: '#4a4540',
+          700: '#36322e',
+          800: '#262321',
+          900: '#1c1a18',
+          950: '#141414',
+        },
+        // Caramel (website --caramel #93571d / --caramel-light #d9a06a) in place of yellow amber.
+        amber: {
+          50: '#faf3ea',
+          100: '#f3e3cd',
+          200: '#e8c9a0',
+          300: '#d9a06a',
+          400: '#c9894e',
+          500: '#b0723a',
+          600: '#93571d',
+          700: '#7a4718',
+          800: '#6e3d12',
+          900: '#4f2c0d',
+          950: '#2c1807',
+        },
+        paper: '#faf8f4',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        display: ['Outfit', 'Inter', 'sans-serif'],
+        sans: ['Jost', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['"Cormorant Garamond"', '"Times New Roman"', 'serif'],
       },
       animation: {
         'bounce-subtle': 'bounceSubtle 2s infinite ease-in-out',

@@ -1,7 +1,12 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { initializeFirestore, getFirestore } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { getStorage } from 'firebase/storage';
+import {
+  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,7 +30,6 @@ export const isFirebaseConfigured = Boolean(
 let app;
 let db;
 let auth;
-let storage;
 
 if (isFirebaseConfigured) {
   try {
@@ -40,8 +44,17 @@ if (isFirebaseConfigured) {
       db = getFirestore(app);
     }
 
-    auth = getAuth(app);
-    storage = getStorage(app);
+    // Keep staff signed in across refreshes, tab closes and device restarts
+    // (IndexedDB, falling back to localStorage). They stay signed in until they
+    // press Logout, or an admin blocks them / changes their password.
+    try {
+      auth = initializeAuth(app, {
+        persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver,
+      });
+    } catch {
+      auth = getAuth(app); // already initialised (hot reload)
+    }
     console.info('🔥 Firebase initialized successfully with LongPolling for project:', firebaseConfig.projectId);
   } catch (error) {
     console.error('Error initializing Firebase:', error);
@@ -52,4 +65,4 @@ if (isFirebaseConfigured) {
   );
 }
 
-export { app, db, auth, storage, firebaseConfig };
+export { app, db, auth, firebaseConfig };

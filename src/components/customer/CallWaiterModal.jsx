@@ -28,13 +28,13 @@ export function CallWaiterModal({ isOpen, onClose, tableId, tableNumber }) {
         ? `${selectedObj ? selectedObj.label + ': ' : ''}${customNote.trim()}`
         : selectedObj?.label || 'Assistance requested';
 
-      await createWaiterCall(tableId, tableNumber, reasonText);
+      await createWaiterCall(tableId, tableNumber, reasonText.slice(0, 200));
       showToast(`🔔 Waiter notified for Table #${tableNumber}! Staff will assist you shortly.`, 'success');
       setCustomNote('');
       onClose();
     } catch (err) {
       console.error(err);
-      showToast('Could not notify waiter. Please inform a server.', 'error');
+      showToast(err?.message || 'Could not notify waiter. Please inform a server.', 'error');
     } finally {
       setSubmitting(false);
     }

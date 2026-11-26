@@ -9,10 +9,13 @@ import {
   addTable,
   updateTable,
   deleteTable,
+  regenerateTableQr,
 } from '../../services/firestoreService';
+import { getTableOrderUrl, getPublicBaseUrl, isQrBaseLocal, isGuessableTableId } from '../../utils/tableLinks';
 import { useToast } from '../../context/ToastContext';
-import { Plus, Printer, QrCode, Sparkles } from 'lucide-react';
+import { Plus, Printer, QrCode, Sparkles, AlertTriangle } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { BRAND } from '../../config/brand';
 
 export function AdminTables() {
   const { showToast } = useToast();
@@ -51,28 +54,20 @@ export function AdminTables() {
     setSaving(true);
     try {
       const num = Number(newTableNumber);
-      const customId = `table_${String(num).padStart(2, '0')}`;
-
-      // Check if table number already exists
-      if (tables.some((t) => Number(t.tableNumber) === num)) {
-        showToast(`Table #${num} already exists! Please choose another number.`, 'warning');
-        setSaving(false);
-        return;
-      }
-
+      // addTable checks the database for a duplicate number and gives the
+      // table a random, unguessable id for its QR link.
       await addTable({
-        id: customId,
         tableNumber: num,
         name: newTableName || `Table ${num}`,
         capacity: Number(newCapacity) || 4,
         isActive: true,
       });
 
-      showToast(`Table #${num} created successfully!`, 'success');
+      showToast(`Table ${num} created`, 'success');
       setIsAddModalOpen(false);
     } catch (err) {
       console.error(err);
-      showToast('Failed to create table', 'error');
+      showToast(err?.message || 'Failed to create table', 'error');
     } finally {
       setSaving(false);
     }
@@ -103,11 +98,35 @@ export function AdminTables() {
     }
   };
 
+  const handleRegenerate = async (table) => {
+    const ok = window.confirm(
+      `Give Table ${table.tableNumber} a new QR code?
+
+The old QR (if already printed) will STOP working. Print and stick the new one on the table.`
+    );
+    if (!ok) return;
+    try {
+      await regenerateTableQr(table);
+      showToast(`Table ${table.tableNumber} has a new QR code. Download or print it now.`, 'success');
+    } catch (err) {
+      console.error(err);
+      showToast(err?.message || 'Could not create a new QR code', 'error');
+    }
+  };
+
+  const qrBaseLocal = isQrBaseLocal();
+  const guessableCount = tables.filter((t) => isGuessableTableId(t.id)).length;
+
   const handlePrintAllStandees = () => {
+    if (qrBaseLocal && !window.confirm(
+      `These QR codes point to ${getPublicBaseUrl()}, which customers' phones cannot open.
+
+Set VITE_PUBLIC_SITE_URL to your live site first. Print anyway (for testing)?`
+    )) return;
     window.print();
   };
 
-  const restaurantName = import.meta.env.VITE_RESTAURANT_NAME || 'Gourmet Bistro';
+  const restaurantName = BRAND.name;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 text-slate-900 dark:text-white">
@@ -123,7 +142,7 @@ export function AdminTables() {
               <p className="text-xs mb-3">{t.name}</p>
               <div className="flex justify-center my-2">
                 <QRCodeCanvas
-                  value={`${window.location.origin}/order/${t.id}`}
+                  value={getTableOrderUrl(t.id)}
                   size={150}
                   level="H"
                   includeMargin={true}
@@ -160,6 +179,24 @@ export function AdminTables() {
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {qrBaseLocal && (
+          <div className="mb-4 p-4 bg-rose-50 border border-rose-200 text-rose-900 text-sm flex gap-3">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <div>
+              <b>Don't print these QR codes yet.</b> They point to <code className="font-mono">{getPublicBaseUrl()}</code>, which only works on
+              this computer. Add <code className="font-mono">VITE_PUBLIC_SITE_URL=https://your-live-site</code> to .env (and Netlify), restart, then print.
+            </div>
+          </div>
+        )}
+        {guessableCount > 0 && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-900 text-sm flex gap-3">
+            <AlertTriangle className="w-5 h-5 shrink-0" />
+            <div>
+              {guessableCount} {guessableCount === 1 ? 'table uses' : 'tables use'} an old sample QR link (like <code className="font-mono">/order/table_01</code>) that anyone can guess
+              and order from without being at the table. Click <b>New QR</b> on {guessableCount === 1 ? 'it' : 'each'} before printing.
+            </div>
+          </div>
+        )}
         {loading ? (
           <LoadingSpinner text="Loading tables & QR codes..." className="py-20" />
         ) : tables.length === 0 ? (
@@ -186,6 +223,7 @@ export function AdminTables() {
                 table={table}
                 onToggleActive={handleToggleActive}
                 onDelete={handleDelete}
+                onRegenerate={handleRegenerate}
               />
             ))}
           </div>

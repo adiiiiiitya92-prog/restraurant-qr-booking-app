@@ -7,10 +7,10 @@ export function WaiterCallBanner({ calls = [] }) {
   if (!calls || calls.length === 0) return null;
 
   return (
-    <div className="bg-amber-500 text-slate-950 p-3 rounded-2xl shadow-lg border border-amber-400 mb-6 animate-pulse-subtle">
+    <div className="bg-amber-100 text-slate-950 p-3 rounded-2xl shadow-lg border border-amber-300 mb-6 animate-pulse-subtle">
       <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-amber-600/30">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-slate-950 text-amber-400 rounded-lg">
+          <div className="p-1.5 bg-slate-950 text-amber-300 rounded-lg">
             <Bell className="w-4 h-4 animate-bounce-subtle" />
           </div>
           <span className="font-extrabold text-sm uppercase tracking-wide">

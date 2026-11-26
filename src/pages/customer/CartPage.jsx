@@ -49,9 +49,10 @@ export function CartPage() {
     setRateLimitCooldown(true);
 
     try {
+      // Only the table from the scanned QR link. The table number is looked up
+      // from the database inside createOrder, never trusted from the browser.
       const orderPayload = {
-        tableId: tableId || tableInfo.tableId || 'table_01',
-        tableNumber: tableInfo.tableNumber || 1,
+        tableId,
         items: cartItems.map((i) => ({
           itemId: i.itemId,
           name: i.name,
@@ -75,7 +76,7 @@ export function CartPage() {
           particleCount: 80,
           spread: 70,
           origin: { y: 0.6 },
-          colors: ['#f97316', '#ea580c', '#eab308', '#22c55e'],
+          colors: ['#e2611f', '#b5441a', '#d9a06a', '#141414'],
         });
       } catch (e) {
         // confetti fallback
@@ -85,10 +86,10 @@ export function CartPage() {
       clearCart();
 
       // Redirect to live order tracker
-      navigate(`/order/${tableId || 'table_01'}/status/${orderId}`, { replace: true });
+      navigate(`/order/${tableId}/status/${orderId}`, { replace: true });
     } catch (err) {
       console.error('Order creation error:', err);
-      showToast('Could not place order. Please try again or inform staff.', 'error');
+      showToast(err?.message || 'Could not place order. Please try again or inform staff.', 'error');
       setIsSubmitting(false);
     } finally {
       // 5-second rate limiting cooldown to prevent duplicate clicks
@@ -100,7 +101,7 @@ export function CartPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 text-slate-900 dark:text-white">
-      <Navbar tableId={tableId} tableNumber={tableInfo.tableNumber} />
+      <Navbar tableId={tableId} tableNumber={tableInfo.tableId === tableId ? tableInfo.tableNumber : null} />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
         
@@ -115,7 +116,7 @@ export function CartPage() {
           </Link>
 
           <span className="text-xs font-extrabold uppercase tracking-wider text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-3 py-1 rounded-full border border-brand-200 dark:border-brand-800">
-            Table #{tableInfo.tableNumber || '?'}
+            Table #{(tableInfo.tableId === tableId && tableInfo.tableNumber) || '?'}
           </span>
         </div>
 

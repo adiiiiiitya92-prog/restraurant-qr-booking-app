@@ -107,30 +107,30 @@ export function KitchenDashboard() {
   const activeCount = pendingCount + preparingCount + readyCount;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 pb-20 selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-50 text-slate-950 pb-20 selection:bg-brand-500 selection:text-white">
       <Navbar />
 
       {/* Hidden print area for 80mm thermal receipt KOT */}
       <KOTPrintSlip order={printOrder} />
 
       {/* Top KDS Control Bar */}
-      <div className="bg-slate-950 border-b border-slate-800 py-4 px-4 sm:px-6 lg:px-8">
+      <div className="bg-paper border-b border-slate-200 py-4 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-extrabold shadow-lg shadow-amber-500/20">
+            <div className="w-10 h-10 rounded-full bg-slate-950 text-brand-400 flex items-center justify-center">
               <ChefHat className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold font-display tracking-tight text-white">
+                <h1 className="text-2xl font-display text-slate-950">
                   Kitchen Live Display (KDS) & Waiter Station
                 </h1>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-950 text-emerald-400 border border-emerald-800 animate-pulse">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 animate-pulse">
                   LIVE SYNC
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-600">
                 {activeCount} active {activeCount === 1 ? 'order' : 'orders'} in kitchen • {readyCount} ready for waiter delivery
               </p>
             </div>
@@ -138,13 +138,13 @@ export function KitchenDashboard() {
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Filter Pills */}
-            <div className="flex flex-wrap items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold gap-1">
+            <div className="flex flex-wrap items-center bg-slate-100 p-1 border border-slate-200 text-xs font-medium gap-1">
               <button
                 onClick={() => setStatusFilter('active')}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
                   statusFilter === 'active'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm font-extrabold'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-slate-950 text-slate-50 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-950'
                 }`}
               >
                 Active ({activeCount})
@@ -153,8 +153,8 @@ export function KitchenDashboard() {
                 onClick={() => setStatusFilter('pending')}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
                   statusFilter === 'pending'
-                    ? 'bg-amber-500 text-slate-950 shadow-sm font-extrabold'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-slate-950 text-slate-50 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-950'
                 }`}
               >
                 Pending ({pendingCount})
@@ -163,8 +163,8 @@ export function KitchenDashboard() {
                 onClick={() => setStatusFilter('preparing')}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
                   statusFilter === 'preparing'
-                    ? 'bg-blue-600 text-white shadow-sm font-extrabold'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-950'
                 }`}
               >
                 Cooking ({preparingCount})
@@ -173,8 +173,8 @@ export function KitchenDashboard() {
                 onClick={() => setStatusFilter('ready')}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
                   statusFilter === 'ready'
-                    ? 'bg-emerald-600 text-white shadow-sm font-extrabold'
-                    : 'text-emerald-400 hover:text-white'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-emerald-700 hover:text-emerald-900'
                 }`}
               >
                 Ready to Serve ({readyCount})
@@ -183,8 +183,8 @@ export function KitchenDashboard() {
                 onClick={() => setStatusFilter('served')}
                 className={`px-3 py-1.5 rounded-lg transition-all ${
                   statusFilter === 'served'
-                    ? 'bg-purple-600 text-white shadow-sm font-extrabold'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-950'
                 }`}
               >
                 Served ({servedCount})
@@ -197,8 +197,8 @@ export function KitchenDashboard() {
               title={soundEnabled ? 'Mute Kitchen Alerts' : 'Unmute Kitchen Alerts'}
               className={`p-2.5 rounded-xl border transition-colors ${
                 soundEnabled
-                  ? 'bg-slate-800 border-slate-700 text-amber-400 hover:bg-slate-700'
-                  : 'bg-slate-900 border-slate-800 text-slate-500 hover:bg-slate-800'
+                  ? 'bg-slate-950 border-slate-950 text-brand-400 hover:bg-slate-800'
+                  : 'bg-paper border-slate-200 text-slate-500 hover:bg-slate-100'
               }`}
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -214,16 +214,16 @@ export function KitchenDashboard() {
 
         {/* Ready to Serve Alert Callout for Waiters */}
         {readyCount > 0 && statusFilter !== 'ready' && (
-          <div className="bg-emerald-950/70 border border-emerald-600/50 text-emerald-200 p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
+          <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-lg">
             <div className="flex items-center gap-2.5">
               <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
                 <UtensilsCrossed className="w-4 h-4" />
               </div>
               <div>
-                <span className="font-extrabold text-sm text-white">
+                <span className="font-semibold text-sm text-emerald-900">
                   {readyCount} {readyCount === 1 ? 'Order' : 'Orders'} Ready to Serve!
                 </span>
-                <span className="text-xs text-emerald-300 block">
+                <span className="text-xs text-emerald-700 block">
                   Food is plated & ready for waiter delivery to tables.
                 </span>
               </div>
@@ -240,18 +240,18 @@ export function KitchenDashboard() {
         {loading ? (
           <LoadingSpinner text="Connecting to live kitchen feed..." className="py-24" />
         ) : filteredOrders.length === 0 ? (
-          <div className="bg-slate-950/60 rounded-3xl border border-slate-800 p-16 text-center max-w-xl mx-auto mt-8">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-950/60 text-emerald-400 flex items-center justify-center mx-auto mb-4 border border-emerald-800/40">
+          <div className="bg-paper border border-slate-200 p-16 text-center max-w-xl mx-auto mt-8">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-4 border border-emerald-200">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-extrabold font-display text-white mb-2">
+            <h2 className="text-3xl font-display text-slate-950 mb-2">
               {statusFilter === 'ready'
                 ? 'No Orders Waiting for Waiter'
                 : statusFilter === 'served'
                 ? 'No Completed Orders Yet'
                 : 'All Orders Clear!'}
             </h2>
-            <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+            <p className="text-sm font-light text-slate-600 leading-relaxed max-w-sm mx-auto">
               {statusFilter === 'active' || statusFilter === 'all'
                 ? 'There are no active orders in the kitchen right now. As soon as a customer orders from their table, it will chime and appear here instantly.'
                 : `No orders currently matching the "${statusFilter}" filter.`}

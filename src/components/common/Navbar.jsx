@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  UtensilsCrossed,
   ShoppingBag,
   ChefHat,
   ShieldCheck,
@@ -10,11 +9,14 @@ import {
   QrCode,
   Layers,
   Flame,
+  Download,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { seedFirestoreDatabase } from '../../services/firestoreService';
 import { useToast } from '../../context/ToastContext';
+import { BRAND } from '../../config/brand';
+import { useInstallPrompt } from '../../hooks/useInstallPrompt';
 
 export function Navbar({ tableId = null, tableNumber = null }) {
   const { currentUser, userRole, logout, isFirebaseConfigured } = useAuth();
@@ -22,33 +24,17 @@ export function Navbar({ tableId = null, tableNumber = null }) {
   const { showToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
-  const [seeding, setSeeding] = useState(false);
+  const { canInstall, promptInstall } = useInstallPrompt();
 
-  const restaurantName = import.meta.env.VITE_RESTAURANT_NAME || 'SmartDine Gourmet & Bar';
+  const restaurantName = BRAND.shortName;
   const isCustomerFlow = location.pathname.startsWith('/order');
   const isAdminFlow = location.pathname.startsWith('/admin');
   const isKitchenFlow = location.pathname.startsWith('/kitchen');
   const isLoginPage = location.pathname === '/login';
   const isStaffArea = isAdminFlow || isKitchenFlow;
 
-  const handleSeed = async () => {
-    setSeeding(true);
-    try {
-      const res = await seedFirestoreDatabase();
-      showToast(
-        `✨ Sample menu & tables successfully loaded! (${res.mode === 'firestore' ? 'Synced to Firestore' : 'Local Mode'})`,
-        'success'
-      );
-    } catch (err) {
-      console.error(err);
-      showToast('Failed to seed data', 'error');
-    } finally {
-      setSeeding(false);
-    }
-  };
-
   return (
-    <header className="sticky top-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
+    <header className="sticky top-0 z-40 bg-slate-50/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
@@ -58,15 +44,21 @@ export function Navbar({ tableId = null, tableNumber = null }) {
               to="/"
               className="flex items-center gap-2.5 group focus:outline-none"
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-amber-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20 group-hover:scale-105 transition-transform">
-                <UtensilsCrossed className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-200 dark:border-slate-700 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform">
+                <img
+                  src="/brand/junio8-monogram.webp"
+                  alt=""
+                  className="h-9 w-auto"
+                  width="41"
+                  height="90"
+                />
               </div>
               <div>
-                <span className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white font-display block leading-none">
+                <span className="text-xl font-display text-slate-950 dark:text-slate-50 block leading-none">
                   {restaurantName}
                 </span>
-                <span className="text-[10px] font-semibold text-brand-600 dark:text-brand-400 tracking-wider uppercase">
-                  Digital Menu & Order
+                <span className="text-[9px] font-normal text-amber-600 dark:text-amber-300 tracking-[0.35em] uppercase">
+                  {BRAND.tagline}
                 </span>
               </div>
             </Link>
@@ -82,6 +74,21 @@ export function Navbar({ tableId = null, tableNumber = null }) {
 
           {/* Navigation Links & Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
+
+            {/* Install as an app (staff only; guests just scan and order) */}
+            {canInstall && !isCustomerFlow && (currentUser || isLoginPage) && (
+              <button
+                onClick={async () => {
+                  const outcome = await promptInstall();
+                  if (outcome === 'accepted') showToast('Junio 8 installed. Open it from your home screen.', 'success');
+                }}
+                title="Install Junio 8 as an app on this device"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-slate-950 hover:bg-slate-950 hover:text-slate-50 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Install App</span>
+              </button>
+            )}
             
             {/* Customer Cart Button (shown on /order/:tableId) */}
             {isCustomerFlow && tableId && (
@@ -143,8 +150,19 @@ export function Navbar({ tableId = null, tableNumber = null }) {
               </div>
             )}
 
-            {/* Staff Login Link when outside staff area and not on login page */}
-            {!isStaffArea && !isCustomerFlow && !isLoginPage && (
+            {/* Already signed in but outside the staff area: go back to it */}
+            {currentUser && !isStaffArea && !isCustomerFlow && !isLoginPage && (
+              <Link
+                to="/staff"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 hover:text-brand-600 rounded-lg border border-slate-200 hover:border-brand-500 transition-all"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
+              </Link>
+            )}
+
+            {/* Staff Login Link when signed out, outside staff area and not on login page */}
+            {!currentUser && !isStaffArea && !isCustomerFlow && !isLoginPage && (
               <Link
                 to="/login"
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-brand-600 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-brand-500 transition-all"

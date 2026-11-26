@@ -1,11 +1,137 @@
 rules_version = '2';
+
+// Junio 8 Café: Firestore security rules
+//
+// Who can do what:
+//   Guests (no login, scanning a table QR):
+//     - read the menu and the one table their QR code points to
+//     - place an order and watch that one order's status (by its id)
+//     - call a waiter
+//   Kitchen staff (staff/{uid}.role == 'kitchen'):
+//     - see all orders and waiter calls, change order status, resolve calls
+//   Admin (staff/{uid}.role == 'admin'):
+//     - everything kitchen can do, plus edit menu, tables and staff
+//
+// A person is staff only if a document exists at staff/{their Auth UID}
+// with role 'admin' or 'kitchen'. Only an admin (or you, in the Firebase
+// console) can create that document, so signing up cannot make you staff.
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Allow full read and write access for all collections in SmartDine
-    // (Tables, Menu Items, Orders, Waiter Calls, Staff)
-    match /{document=**} {
-      allow read, write: if true;
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
     }
+
+    function staffPath() {
+      return /databases/$(database)/documents/staff/$(request.auth.uid);
+    }
+
+    function isStaff() {
+      return signedIn()
+        && exists(staffPath())
+        && get(staffPath()).data.role in ['admin', 'kitchen']
+        && get(staffPath()).data.get('active', true) == true;
+    }
+
+    function isAdmin() {
+      return isStaff() && get(staffPath()).data.role == 'admin';
+    }
+
+    function tablePath(tableId) {
+      return /databases/$(database)/documents/tables/$(tableId);
+    }
+
+    // The order/call must name a real, active table AND carry that table's
+    // own number, so nothing can be labelled with the wrong table.
+    function matchesActiveTable(data) {
+      return data.tableId is string
+        && exists(tablePath(data.tableId))
+        && get(tablePath(data.tableId)).data.get('isActive', true) == true
+        && data.tableNumber == get(tablePath(data.tableId)).data.tableNumber;
+    }
+
+    // ---------- staff ----------
+    match /staff/{uid} {
+      // A signed-in person may read their own record (the app does this at login).
+      allow get: if signedIn() && request.auth.uid == uid;
+      // Admin manages the staff list.
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    // ---------- menu & tables: public to read, admin to change ----------
+    match /menuItems/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /tables/{tableId} {
+      // A guest can open the one table their QR points to, but cannot list all
+      // tables (that would reveal every table's secret QR link).
+      allow get: if true;
+      allow list: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    // ---------- orders ----------
+    match /orders/{orderId} {
+      // A guest watches their own order by id; staff list all orders.
+      allow get: if true;
+      allow list: if isStaff();
+
+      // Guests place new orders. Shape and limits are checked so the
+      // collection can't be filled with junk.
+      allow create: if
+        request.resource.data.keys().hasOnly([
+          'id', 'orderNumber', 'tableId', 'tableNumber', 'items',
+          'subtotal', 'taxPercent', 'taxAmount', 'totalAmount',
+          'customerNotes', 'status', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll(['id', 'tableId', 'tableNumber', 'items', 'totalAmount', 'status'])
+        && request.resource.data.id == orderId
+        && request.resource.data.status == 'pending'
+        && matchesActiveTable(request.resource.data)
+        && request.resource.data.items is list
+        && request.resource.data.items.size() > 0
+        && request.resource.data.items.size() <= 50
+        && request.resource.data.totalAmount is number
+        && request.resource.data.totalAmount >= 0
+        && request.resource.data.totalAmount <= 100000
+        && request.resource.data.get('customerNotes', '') is string
+        && request.resource.data.get('customerNotes', '').size() <= 500
+        && request.resource.data.createdAt == request.time;
+
+      // Staff move an order through pending → preparing → ready → served
+      // (or cancelled). They can change only the status, nothing else.
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in ['pending', 'preparing', 'ready', 'served', 'cancelled'];
+
+      allow delete: if isAdmin();
+    }
+
+    // ---------- waiter calls ----------
+    match /waiterCalls/{callId} {
+      allow read: if isStaff();
+
+      allow create: if
+        request.resource.data.keys().hasOnly(['id', 'tableId', 'tableNumber', 'reason', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['id', 'tableId', 'tableNumber', 'reason', 'status', 'createdAt'])
+        && request.resource.data.id == callId
+        && request.resource.data.status == 'pending'
+        && matchesActiveTable(request.resource.data)
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() <= 200
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'resolvedAt'])
+        && request.resource.data.status == 'resolved';
+
+      allow delete: if isAdmin();
+    }
+
+    // Anything not listed above is denied.
   }
 }

@@ -21,3 +21,13 @@
   for = "/manifest.webmanifest"
   [headers.values]
     Content-Type = "application/manifest+json"
+
+# Local dev with serverless functions: `npm run dev:netlify` → http://localhost:8888
+[dev]
+  command = "npm run dev"
+  targetPort = 5173
+  port = 8888
+  framework = "#custom"
+
+[functions]
+  directory = "netlify/functions"
