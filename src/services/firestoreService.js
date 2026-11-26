@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db, isFirebaseConfigured } from './firebase';
 import { INITIAL_TABLES, INITIAL_MENU_ITEMS, INITIAL_STAFF } from './seedData';
+import { normalizeIndianMobile } from '../utils/phone';
 
 // --- Local Storage Cache & Fallback ---
 const LOCAL_STORAGE_KEYS = {
@@ -417,9 +418,25 @@ async function requireOrderableTable(tableId) {
   return table;
 }
 
+/**
+ * Order ids are long and random. Anyone holding an order id can open that order's
+ * status page (that's how the guest tracks it), and orders now carry the guest's
+ * phone number, so ids must not be guessable.
+ */
+function generateOrderId() {
+  const alphabet = 'abcdefghijkmnpqrstuvwxyz23456789';
+  const bytes = new Uint8Array(20);
+  crypto.getRandomValues(bytes);
+  return `ord_${Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('')}`;
+}
+
 export async function createOrder(orderData) {
+  const customerPhone = normalizeIndianMobile(orderData.customerPhone);
+  if (!customerPhone) {
+    throw new Error('Please enter a valid 10-digit mobile number.');
+  }
   const table = await requireOrderableTable(orderData.tableId);
-  const orderId = orderData.id || `ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const orderId = generateOrderId();
   const tableNum = Number(table.tableNumber);
   const shortCode = orderId.slice(-4).toUpperCase();
   const orderNumber = orderData.orderNumber || `#T${tableNum}-${shortCode}`;
@@ -444,6 +461,10 @@ export async function createOrder(orderData) {
     taxAmount: Number(orderData.taxAmount) || 0,
     totalAmount: Number(orderData.totalAmount) || 0,
     customerNotes: orderData.customerNotes || '',
+    // Guest's mobile number. Not verified yet: an OTP step can be added later and
+    // will set phoneVerified to true.
+    customerPhone,
+    phoneVerified: false,
     status: 'pending',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

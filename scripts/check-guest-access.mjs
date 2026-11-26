@@ -47,6 +47,7 @@ await expect('guest CANNOT order for a table that does not exist', false, () =>
     id: fakeId, orderNumber: '#T9-TEST', tableId: 'does-not-exist', tableNumber: 9,
     items: [{ itemId: 'x', name: 'Test', price: 1, qty: 1, notes: '', isVeg: true }],
     subtotal: 1, taxPercent: 5, taxAmount: 0, totalAmount: 1, customerNotes: '',
+    customerPhone: '9876543210', phoneVerified: false,
     status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
   })
 );

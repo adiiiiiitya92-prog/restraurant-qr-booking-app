@@ -5,7 +5,8 @@ rules_version = '2';
 // Who can do what:
 //   Guests (no login, scanning a table QR):
 //     - read the menu and the one table their QR code points to
-//     - place an order and watch that one order's status (by its id)
+//     - place an order (with their mobile number) and watch that one order's
+//       status (by its long random id)
 //     - call a waiter
 //   Kitchen staff (staff/{uid}.role == 'kitchen'):
 //     - see all orders and waiter calls, change order status, resolve calls
@@ -82,13 +83,18 @@ service cloud.firestore {
 
       // Guests place new orders. Shape and limits are checked so the
       // collection can't be filled with junk.
+      // customerPhone: Indian 10-digit mobile. Guests can never mark it verified
+      // themselves (a future OTP step on the server will set phoneVerified).
       allow create: if
         request.resource.data.keys().hasOnly([
           'id', 'orderNumber', 'tableId', 'tableNumber', 'items',
           'subtotal', 'taxPercent', 'taxAmount', 'totalAmount',
-          'customerNotes', 'status', 'createdAt', 'updatedAt'
+          'customerNotes', 'customerPhone', 'phoneVerified', 'status', 'createdAt', 'updatedAt'
         ])
-        && request.resource.data.keys().hasAll(['id', 'tableId', 'tableNumber', 'items', 'totalAmount', 'status'])
+        && request.resource.data.keys().hasAll(['id', 'tableId', 'tableNumber', 'items', 'totalAmount', 'customerPhone', 'status'])
+        && request.resource.data.customerPhone is string
+        && request.resource.data.customerPhone.matches('^[6-9][0-9]{9}$')
+        && request.resource.data.get('phoneVerified', false) == false
         && request.resource.data.id == orderId
         && request.resource.data.status == 'pending'
         && matchesActiveTable(request.resource.data)

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatMobile } from '../../utils/phone';
 import { Modal } from '../common/Modal';
 import { StatusBadge, DietaryBadge } from '../common/Badge';
 import { formatCurrency, formatDateTime, formatOrderNumber } from '../../utils/formatters';
@@ -31,12 +32,26 @@ export function OrderDetailModal({ isOpen, onClose, order }) {
     <Modal isOpen={isOpen} onClose={onClose} title={`Order Details - ${orderNumDisplay}`} maxWidth="max-w-xl">
       <div className="space-y-4">
         {/* Top Info Banner */}
-        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+        <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="text-xs text-slate-500 block">Table Location</span>
             <span className="text-sm font-extrabold text-slate-900 dark:text-white font-display">
               Table #{order.tableNumber || '?'}
             </span>
+          </div>
+
+          <div>
+            <span className="text-xs text-slate-500 block">Guest Mobile</span>
+            {order.customerPhone ? (
+              <a href={`tel:+91${order.customerPhone}`} className="text-sm font-bold text-brand-600 hover:underline">
+                {formatMobile(order.customerPhone)}
+              </a>
+            ) : (
+              <span className="text-xs text-slate-400">Not given</span>
+            )}
+            {order.customerPhone && (
+              <span className="block text-[10px] text-slate-400">{order.phoneVerified ? 'Verified' : 'Not verified'}</span>
+            )}
           </div>
 
           <div>

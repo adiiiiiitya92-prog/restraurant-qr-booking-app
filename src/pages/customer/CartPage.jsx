@@ -6,6 +6,7 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import { formatCurrency } from '../../utils/formatters';
 import { createOrder } from '../../services/firestoreService';
+import { normalizeIndianMobile, getSavedPhone, savePhone } from '../../utils/phone';
 import confetti from 'canvas-confetti';
 import {
   ArrowLeft,
@@ -17,6 +18,7 @@ import {
   Sparkles,
   ShieldCheck,
   CheckCircle2,
+  Smartphone,
 } from 'lucide-react';
 
 export function CartPage() {
@@ -39,11 +41,20 @@ export function CartPage() {
   } = useCart();
 
   const [customerNotes, setCustomerNotes] = useState('');
+  // Guest's mobile number (required). Prefilled from this phone if they ordered before.
+  const [phone, setPhone] = useState(getSavedPhone);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const validPhone = normalizeIndianMobile(phone);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rateLimitCooldown, setRateLimitCooldown] = useState(false);
 
   const handlePlaceOrder = async () => {
     if (cartItems.length === 0 || isSubmitting || rateLimitCooldown) return;
+    if (!validPhone) {
+      setPhoneTouched(true);
+      showToast('Please enter your 10-digit mobile number to place the order.', 'warning');
+      return;
+    }
 
     setIsSubmitting(true);
     setRateLimitCooldown(true);
@@ -66,9 +77,11 @@ export function CartPage() {
         taxAmount,
         totalAmount: grandTotal,
         customerNotes: customerNotes.trim(),
+        customerPhone: validPhone,
       };
 
       const orderId = await createOrder(orderPayload);
+      savePhone(validPhone);
 
       // Trigger festive celebratory confetti
       try {
@@ -242,10 +255,38 @@ export function CartPage() {
               </div>
             </div>
 
+            {/* Guest mobile number (required before ordering; OTP can be added later) */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
+              <label htmlFor="guest-phone" className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                <Smartphone className="w-4 h-4 text-brand-500" />
+                Your mobile number *
+              </label>
+              <div className={`flex items-stretch border ${phoneTouched && !validPhone ? 'border-rose-400' : 'border-slate-200'} bg-slate-50 focus-within:border-amber-600 focus-within:bg-white`}>
+                <span className="px-3 flex items-center text-sm text-slate-500 border-r border-slate-200 select-none">+91</span>
+                <input
+                  id="guest-phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  maxLength={14}
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/[^\d\s-]/g, ''))}
+                  onBlur={() => setPhoneTouched(true)}
+                  placeholder="98765 43210"
+                  className="flex-1 px-3 py-3 bg-transparent text-base tracking-wide focus:outline-none"
+                />
+              </div>
+              {phoneTouched && !validPhone ? (
+                <p className="text-xs text-rose-600 mt-1.5">Enter a valid 10-digit mobile number.</p>
+              ) : (
+                <p className="text-xs text-slate-500 mt-1.5">We'll use this only to reach you about this order.</p>
+              )}
+            </div>
+
             {/* Submit Button */}
             <button
               onClick={handlePlaceOrder}
-              disabled={isSubmitting || rateLimitCooldown}
+              disabled={isSubmitting || rateLimitCooldown || !validPhone}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-brand-600 to-amber-500 hover:from-brand-700 hover:to-amber-600 active:scale-[0.99] text-white font-extrabold text-base shadow-xl shadow-brand-500/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle2 className="w-5 h-5" />
@@ -254,6 +295,8 @@ export function CartPage() {
                   ? 'Placing Order...'
                   : rateLimitCooldown
                   ? 'Please wait...'
+                  : !validPhone
+                  ? 'Enter your mobile number to order'
                   : `Confirm & Place Order (${formatCurrency(grandTotal)})`}
               </span>
             </button>

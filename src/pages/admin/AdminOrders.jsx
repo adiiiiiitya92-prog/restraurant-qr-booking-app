@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { formatMobile } from '../../utils/phone';
 import { Navbar } from '../../components/common/Navbar';
 import { AdminHeader } from '../../components/admin/AdminHeader';
 import { OrderDetailModal } from '../../components/admin/OrderDetailModal';
@@ -65,6 +66,7 @@ export function AdminOrders() {
       !searchQuery.trim() ||
       orderNum.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (order.customerPhone && searchQuery.replace(/\D/g, '').length >= 3 && order.customerPhone.includes(searchQuery.replace(/\D/g, ''))) ||
       order.items?.some((item) => item.name?.toLowerCase().includes(searchQuery.toLowerCase()));
 
     return matchesStatus && matchesTable && matchesSearch;
@@ -91,7 +93,7 @@ export function AdminOrders() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Order # (#T2-014) or item..."
+              placeholder="Search by Order #, mobile number or item..."
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs shadow-xs focus:ring-2 focus:ring-brand-500 focus:outline-none"
             />
           </div>
@@ -175,6 +177,11 @@ export function AdminOrders() {
                             <QrCode className="w-3 h-3 text-brand-500" />
                             Table #{order.tableNumber || '?'}
                           </span>
+                          {order.customerPhone && (
+                            <a href={`tel:+91${order.customerPhone}`} className="block mt-1 text-[11px] text-slate-500 hover:text-brand-600">
+                              📞 {formatMobile(order.customerPhone)}
+                            </a>
+                          )}
                         </td>
 
                         <td className="p-4">
